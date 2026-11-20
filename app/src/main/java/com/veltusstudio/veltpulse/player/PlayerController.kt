@@ -267,6 +267,7 @@ class PlayerController(
         _uiState.update { cur -> cur.copy(crossfadeSec = options[(options.indexOf(cur.crossfadeSec) + 1) % options.size]) }
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun toggleSkipSilence() {
         val next = !_uiState.value.skipSilence
         _uiState.update { it.copy(skipSilence = next) }
