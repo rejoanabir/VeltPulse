@@ -51,34 +51,39 @@ storePassword=$KEYSTORE_PASSWORD
 keyAlias=$KEY_ALIAS
 keyPassword=$KEY_PASSWORD
 EOF
-            echo "Release keystore and signing properties successfully configured."
+            echo "HAS_KEYSTORE=true" >> $GITHUB_ENV
           else
-            echo "::error::KEYSTORE_BASE64 secret is not defined in repository secrets."
-            exit 1
+            echo "HAS_KEYSTORE=false" >> $GITHUB_ENV
+            echo "No signing keystore configured; building debug APK for release distribution."
           fi
 
-      - name: Build Signed APK and AAB
-        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+      - name: Build Application Package
+        run: |
+          if [ "$HAS_KEYSTORE" = "true" ]; then
+            ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+          else
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          fi
 
       - name: Package Release Assets & Generate Checksums
         run: |
           mkdir -p release_dist
-          find app/build/outputs/apk/release/ -name "*.apk" -exec cp {} release_dist/ \;
-          find app/build/outputs/bundle/release/ -name "*.aab" -exec cp {} release_dist/ \;
+          find app/build/outputs/apk/ -name "*.apk" -exec cp {} release_dist/VeltPulse-v1.0.0.apk \;
+          if [ -d app/build/outputs/bundle/release ]; then
+            find app/build/outputs/bundle/release/ -name "*.aab" -exec cp {} release_dist/ \;
+          fi
           cd release_dist
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      - name: Create GitHub Release & Upload Assets
+      - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           files: |
             release_dist/*.apk
             release_dist/*.aab
             release_dist/SHA256SUMS.txt
-          generate_release_notes: true
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

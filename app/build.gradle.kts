@@ -144,3 +144,31 @@ dependencies {
 
     testImplementation(libs.junit)
 }
+
+tasks.register("exportApkToProject") {
+    doLast {
+        val outDir = rootProject.file("outputs")
+        outDir.mkdirs()
+        var exported = false
+        layout.buildDirectory.asFile.get().walkTopDown().filter { it.extension == "apk" }.forEach { apk ->
+            val dest = File(outDir, apk.name)
+            apk.copyTo(dest, overwrite = true)
+            println("SUCCESS: Exported APK to: ${dest.absolutePath}")
+            exported = true
+        }
+        if (!exported) {
+            val fallback = File(rootProject.projectDir, "app/build/outputs/apk/debug")
+            if (fallback.exists()) {
+                fallback.walkTopDown().filter { it.extension == "apk" }.forEach { apk ->
+                    val dest = File(outDir, apk.name)
+                    apk.copyTo(dest, overwrite = true)
+                    println("SUCCESS: Exported APK to: ${dest.absolutePath}")
+                }
+            }
+        }
+    }
+}
+
+tasks.matching { it.name == "assembleDebug" }.configureEach {
+    finalizedBy("exportApkToProject")
+}
