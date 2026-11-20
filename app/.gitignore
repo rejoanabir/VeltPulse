@@ -1,0 +1,4 @@
+/build
+*.keystore
+release.keystore
+release.properties
